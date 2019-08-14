@@ -229,15 +229,6 @@ sales_rep = sales_rep.rename(columns={"Sales_Rep": "SALES_REP_ID"})
 sales_rep.to_csv('sales_rep_table.csv',index=False)
 data.insert(loc = data.columns.get_loc('SALES_REP'),column='SALES_REP_ID',value=add_to_table2(data.SALES_REP,sales_rep.SALES_REP,data.BRANCH_ID,sales_rep.BRANCH_ID,sales_rep.SALES_REP_ID))
 
-#Calendar
-pre_cal = data[['ORDERDATE','MONTH_ID','QTR_ID','YEAR_ID']]
-data['ORDERDATE'] = pd.to_datetime(data['ORDERDATE'],infer_datetime_format=True)
-data.insert(loc=data.columns.get_loc('QTR_ID'),column='DAY_ID',value=data['ORDERDATE'].dt.day)
-
-calendar = data[['ORDERNUMBER','ORDERLINENUMBER','ORDERDATE','DAY_ID','MONTH_ID','QTR_ID','YEAR_ID']]
-
-calendar.to_csv('calendar_table.csv',index=False)
-
 #Payments
 def assign_pay(data):
     data['PAYMENT_METHOD'] = ''
@@ -259,7 +250,7 @@ payment_method.to_csv('payment_method_table.csv',index=False)
 data.insert(loc = data.columns.get_loc('PAYMENT_METHOD'),column='PAYMENT_CODE',value=add_to_table(data.PAYMENT_METHOD,payment_method.PAYMENT_METHOD,payment_method.PAYMENT_CODE))
 
 #Orders_Product
-Orders_Products = data[['ORDERNUMBER','ORDERLINENUMBER','PRODUCTCODE','SUPPLIER_ID','QUANTITYORDERED','PRICEEACH','SALES','DEALSIZE','PAYMENT_CODE']]
+Orders_Products = data[['TRANSACTION_ID','ORDERNUMBER','PRODUCTCODE','SUPPLIER_ID','QUANTITYORDERED','PRICEEACH','SALES','DEALSIZE','PAYMENT_CODE']]
 Orders_Products.to_csv('orders_products_table.csv',index=False)
 
 #Sales Method
@@ -292,9 +283,23 @@ data.insert(loc = data.columns.get_loc('SALES_METHOD'),column='SALES_METHOD_CODE
 
 #Orders
 data = pd.read_csv('proccesedDATA.csv')
-orders = data[['ORDERNUMBER','ORDERLINENUMBER','CUSTOMER_ID','SALES_REP_ID','SALES_METHOD_CODE','STATUS']]
+pre_order = data[['ORDERNUMBER','ORDERLINENUMBER']]
+pre_order = pre_order.drop_duplicates().sort_values(by=["ORDERNUMBER",'ORDERLINENUMBER']).reset_index(drop=True)
+orders = pd.concat([id_table[['Orders']][0:len(pre_order)],pre_order],axis=1)
+orders = orders.rename(columns={"Orders": "TRANSACTION_ID"})
 
+data.insert(loc = data.columns.get_loc('ORDERNUMBER'),column='TRANSACTION_ID',value=add_to_table2(data.ORDERNUMBER,orders.ORDERNUMBER,data.ORDERLINENUMBER,orders.ORDERLINENUMBER,orders.TRANSACTION_ID))
+orders = data[['TRANSACTION_ID','ORDERNUMBER','ORDERLINENUMBER','CUSTOMER_ID','SALES_REP_ID','SALES_METHOD_CODE','STATUS']].sort_values(by='TRANSACTION_ID').reset_index(drop=True)
 orders.to_csv('orders_table.csv',index=False)
+
+#Calendar
+pre_cal = data[['ORDERDATE','MONTH_ID','QTR_ID','YEAR_ID']]
+data['ORDERDATE'] = pd.to_datetime(data['ORDERDATE'],infer_datetime_format=True)
+data.insert(loc=data.columns.get_loc('QTR_ID'),column='DAY_ID',value=data['ORDERDATE'].dt.day)
+
+calendar = data[['TRANSACTION_ID','ORDERNUMBER','ORDERDATE','DAY_ID','MONTH_ID','QTR_ID','YEAR_ID']]
+
+calendar.to_csv('calendar_table.csv',index=False)
 
 #Deliveries
 from datetime import timedelta
@@ -335,11 +340,10 @@ deliveries.to_csv('deliveries_table.csv',index=False)
 
 #Deliveries_Orders
 
-pre_dev_o = data[['DELIVERY_ID','DELIVERY_DATE','ORDERNUMBER','ORDERLINENUMBER']]
-deliveries_orders =pre_dev_o.drop_duplicates().reset_index(drop=True).sort_values(by='ORDERNUMBER').reset_index(drop=True)
+pre_dev_o = data[['DELIVERY_ID','DELIVERY_DATE','TRANSACTION_ID']]
+deliveries_orders =pre_dev_o.drop_duplicates().sort_values(by='TRANSACTION_ID').reset_index(drop=True)
 
 deliveries_orders.to_csv('deliveries_orders_table.csv',index=False)
 
 data.to_csv('proccesedDATA.csv',index=False)
-
 
